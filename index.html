@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI训练师四级模拟考试</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">AI训练师四级 模拟考试</div>
+    <div class="meta" id="bankMeta">题库加载中...</div>
+  </header>
+
+  <main class="container">
+    <section class="panel" id="setupPanel">
+      <h1>考试配置</h1>
+      <p class="hint">选择题目范围、题量和计时后开始模拟。支持 GitHub Pages 直接部署。</p>
+
+      <div class="grid">
+        <label>
+          <span>题库范围</span>
+          <select id="scopeSelect">
+            <option value="all">全量题库（750题）</option>
+            <option value="official">仅官方答案题（200题）</option>
+            <option value="heuristic">仅推断答案题（550题）</option>
+          </select>
+        </label>
+
+
+
+        <label>
+          <span>章节筛选</span>
+          <select id="chapterSelect">
+            <option value="all">全部章节</option>
+            <option value="基本要求">基本要求</option>
+            <option value="数据采集和处理">数据采集和处理</option>
+            <option value="数据标注">数据标注</option>
+            <option value="智能系统运维">智能系统运维</option>
+          </select>
+        </label>
+
+        <label>
+          <span>考试模式</span>
+          <select id="modeSelect">
+            <option value="exam200">标准模拟（判断50 + 单选150）</option>
+            <option value="custom">自定义题量</option>
+            <option value="judgeOnly">只练判断题</option>
+            <option value="singleOnly">只练单选题</option>
+          </select>
+        </label>
+
+        <label>
+          <span>判断题数量</span>
+          <input id="judgeCount" type="number" min="0" max="250" value="50" />
+        </label>
+
+        <label>
+          <span>单选题数量</span>
+          <input id="singleCount" type="number" min="0" max="500" value="150" />
+        </label>
+
+        <label>
+          <span>考试时长（分钟）</span>
+          <input id="duration" type="number" min="1" max="240" value="90" />
+        </label>
+
+        <label>
+          <span>题目顺序</span>
+          <select id="orderSelect">
+            <option value="random">随机抽题</option>
+            <option value="asc">按题号顺序</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="startBtn" class="primary">开始考试</button>
+        <button id="loadWrongBtn">练习错题</button>
+        <button id="clearWrongBtn" class="danger">清空错题本</button>
+      </div>
+
+      <div class="hint small" id="setupSummary"></div>
+    </section>
+
+    <section class="panel hidden" id="examPanel">
+      <div class="examTop">
+        <div class="stat" id="progress">第 1 / 1 题</div>
+        <div class="stat">已答 <span id="answeredCount">0</span></div>
+        <div class="timer" id="timer">90:00</div>
+      </div>
+
+      <div class="qmeta" id="qMeta"></div>
+      <h2 class="question" id="questionText"></h2>
+      <div id="options" class="options"></div>
+
+      <div class="examActions">
+        <button id="prevBtn">上一题</button>
+        <button id="nextBtn">下一题</button>
+        <button id="submitBtn" class="primary">交卷判分</button>
+      </div>
+
+      <div class="jumpWrap">
+        <label for="jumpInput">跳题（输入题号序号）</label>
+        <input id="jumpInput" type="number" min="1" />
+        <button id="jumpBtn">跳转</button>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="resultPanel">
+      <h2>成绩报告</h2>
+      <div class="scoreLine" id="scoreLine"></div>
+      <div class="scoreGrid" id="scoreGrid"></div>
+
+      <div class="actions">
+        <button id="reviewWrongBtn">查看错题</button>
+        <button id="restartBtn" class="primary">再来一套</button>
+      </div>
+
+      <div id="wrongList" class="wrongList"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>说明：答案来源包含官方答案与规则推断答案。可在考试配置中选择范围。</p>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
