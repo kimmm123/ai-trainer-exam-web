@@ -16,6 +16,7 @@
   - 只练单选题
 - 倒计时交卷、自动判分、错题回顾
 - 本地错题本（localStorage）
+- 错题本云同步（GitHub Gist，前端直连）
 
 ## 目录结构
 - `index.html` 页面入口
@@ -40,6 +41,13 @@ python3 -m http.server 8080
 ```
 
 然后访问：`http://127.0.0.1:8080`
+
+## 错题本云同步使用说明（Gist）
+1. 进入页面下方“错题本云同步（GitHub Gist）”模块。
+2. 填写一个有 `gist` 权限的 GitHub Token。
+3. 首次可不填 Gist ID，点击“上传错题本到云端”会自动创建私有 Gist，并自动回填 Gist ID。
+4. 其他设备输入同一 Token + Gist ID，点击“从云端拉取错题本”即可同步。
+5. 为安全起见，Token 只保存在你的浏览器本地（localStorage），不会上传到本仓库。
 
 ## 发布到 GitHub Pages（最简）
 

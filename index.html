@@ -80,6 +80,28 @@
         <button id="clearWrongBtn" class="danger">清空错题本</button>
       </div>
 
+      <div class="syncBox">
+        <h3>错题本云同步（GitHub Gist）</h3>
+        <p class="hint small">仅保存在你自己的浏览器本地。需要一个有 `gist` 权限的 GitHub Token。</p>
+        <div class="grid">
+          <label>
+            <span>GitHub Token</span>
+            <input id="gistToken" type="password" placeholder="ghp_xxx 或 github_pat_xxx" />
+          </label>
+          <label>
+            <span>Gist ID</span>
+            <input id="gistId" type="text" placeholder="例如：a1b2c3d4e5f6..." />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="saveTokenBtn">保存配置</button>
+          <button id="pushWrongBtn">上传错题本到云端</button>
+          <button id="pullWrongBtn">从云端拉取错题本</button>
+          <button id="clearTokenBtn" class="danger">清除本地Token</button>
+        </div>
+        <div class="hint small" id="syncStatus"></div>
+      </div>
+
       <div class="hint small" id="setupSummary"></div>
     </section>
 

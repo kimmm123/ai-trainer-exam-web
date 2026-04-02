@@ -16,6 +16,13 @@ const orderSelect = document.getElementById('orderSelect');
 const startBtn = document.getElementById('startBtn');
 const loadWrongBtn = document.getElementById('loadWrongBtn');
 const clearWrongBtn = document.getElementById('clearWrongBtn');
+const gistTokenInput = document.getElementById('gistToken');
+const gistIdInput = document.getElementById('gistId');
+const saveTokenBtn = document.getElementById('saveTokenBtn');
+const pushWrongBtn = document.getElementById('pushWrongBtn');
+const pullWrongBtn = document.getElementById('pullWrongBtn');
+const clearTokenBtn = document.getElementById('clearTokenBtn');
+const syncStatusEl = document.getElementById('syncStatus');
 
 const progressEl = document.getElementById('progress');
 const answeredCountEl = document.getElementById('answeredCount');
@@ -37,6 +44,9 @@ const restartBtn = document.getElementById('restartBtn');
 const wrongListEl = document.getElementById('wrongList');
 
 const STORAGE_WRONG = 'ai4_wrong_book_v1';
+const STORAGE_GIST_TOKEN = 'ai4_gist_token_v1';
+const STORAGE_GIST_ID = 'ai4_gist_id_v1';
+const GIST_FILE = 'ai4_wrong_book.json';
 
 let bank = [];
 let examList = [];
@@ -81,6 +91,124 @@ function mergeWrongItems(newItems) {
     map.set(`${q.type}-${q.id}`, q);
   });
   setWrongBook([...map.values()]);
+}
+
+function setSyncStatus(msg, isError = false) {
+  if (!syncStatusEl) return;
+  syncStatusEl.textContent = msg;
+  syncStatusEl.style.color = isError ? '#8e2436' : '#5d6d73';
+}
+
+function loadSyncConfigFromLocal() {
+  if (!gistTokenInput || !gistIdInput) return;
+  gistTokenInput.value = localStorage.getItem(STORAGE_GIST_TOKEN) || '';
+  gistIdInput.value = localStorage.getItem(STORAGE_GIST_ID) || '';
+}
+
+function saveSyncConfigToLocal() {
+  const token = (gistTokenInput?.value || '').trim();
+  const gistId = (gistIdInput?.value || '').trim();
+  localStorage.setItem(STORAGE_GIST_TOKEN, token);
+  localStorage.setItem(STORAGE_GIST_ID, gistId);
+  setSyncStatus('已保存 Gist 配置到本地浏览器。');
+}
+
+function clearSyncConfigFromLocal() {
+  localStorage.removeItem(STORAGE_GIST_TOKEN);
+  localStorage.removeItem(STORAGE_GIST_ID);
+  if (gistTokenInput) gistTokenInput.value = '';
+  if (gistIdInput) gistIdInput.value = '';
+  setSyncStatus('已清除本地 Token 和 Gist ID。');
+}
+
+async function githubRequest(url, token, options = {}) {
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    ...options.headers,
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const resp = await fetch(url, { ...options, headers });
+  if (!resp.ok) {
+    let detail = '';
+    try {
+      const data = await resp.json();
+      detail = data?.message ? ` - ${data.message}` : '';
+    } catch {
+      detail = '';
+    }
+    throw new Error(`HTTP ${resp.status}${detail}`);
+  }
+  return resp.json();
+}
+
+async function ensureGistAndPushWrongBook() {
+  const token = (gistTokenInput?.value || '').trim();
+  if (!token) {
+    setSyncStatus('请先填写 GitHub Token。', true);
+    return;
+  }
+
+  const wrongBook = getWrongBook();
+  const content = JSON.stringify(
+    { updatedAt: new Date().toISOString(), count: wrongBook.length, items: wrongBook },
+    null,
+    2
+  );
+
+  let gistId = (gistIdInput?.value || '').trim();
+  if (!gistId) {
+    const created = await githubRequest('https://api.github.com/gists', token, {
+      method: 'POST',
+      body: JSON.stringify({
+        description: 'AI训练师四级错题本同步',
+        public: false,
+        files: {
+          [GIST_FILE]: { content },
+        },
+      }),
+    });
+    gistId = created.id;
+    gistIdInput.value = gistId;
+    localStorage.setItem(STORAGE_GIST_ID, gistId);
+    localStorage.setItem(STORAGE_GIST_TOKEN, token);
+    setSyncStatus(`已新建 Gist 并上传成功，Gist ID: ${gistId}`);
+    return;
+  }
+
+  await githubRequest(`https://api.github.com/gists/${gistId}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      files: {
+        [GIST_FILE]: { content },
+      },
+    }),
+  });
+  localStorage.setItem(STORAGE_GIST_ID, gistId);
+  localStorage.setItem(STORAGE_GIST_TOKEN, token);
+  setSyncStatus(`上传成功：共 ${wrongBook.length} 条错题。`);
+}
+
+async function pullWrongBookFromGist() {
+  const token = (gistTokenInput?.value || '').trim();
+  const gistId = (gistIdInput?.value || '').trim();
+  if (!token || !gistId) {
+    setSyncStatus('请先填写 GitHub Token 和 Gist ID。', true);
+    return;
+  }
+
+  const gist = await githubRequest(`https://api.github.com/gists/${gistId}`, token, { method: 'GET' });
+  const file = gist?.files?.[GIST_FILE];
+  if (!file?.content) {
+    throw new Error(`Gist 中未找到文件 ${GIST_FILE}`);
+  }
+
+  const payload = JSON.parse(file.content);
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+  setWrongBook(items);
+  localStorage.setItem(STORAGE_GIST_ID, gistId);
+  localStorage.setItem(STORAGE_GIST_TOKEN, token);
+  setSyncStatus(`拉取成功：共 ${items.length} 条错题已写入本地。`);
 }
 
 function applyModeDefaults() {
@@ -367,6 +495,8 @@ async function init() {
   bank = data.questions || [];
 
   bankMetaEl.textContent = `已加载：判断 ${data.meta.judge_count}，单选 ${data.meta.single_count}，共 ${bank.length} 题`;
+  loadSyncConfigFromLocal();
+  setSyncStatus('可使用 Gist 同步错题本。首次使用可留空 Gist ID，上传时会自动创建。');
   renderSetupSummary();
 }
 
@@ -431,6 +561,34 @@ clearWrongBtn.onclick = () => {
   if (!ok) return;
   setWrongBook([]);
   alert('错题本已清空。');
+};
+
+saveTokenBtn.onclick = () => {
+  saveSyncConfigToLocal();
+};
+
+clearTokenBtn.onclick = () => {
+  clearSyncConfigFromLocal();
+};
+
+pushWrongBtn.onclick = async () => {
+  try {
+    setSyncStatus('正在上传到 Gist，请稍候...');
+    await ensureGistAndPushWrongBook();
+  } catch (err) {
+    console.error(err);
+    setSyncStatus(`上传失败：${err.message}`, true);
+  }
+};
+
+pullWrongBtn.onclick = async () => {
+  try {
+    setSyncStatus('正在从 Gist 拉取，请稍候...');
+    await pullWrongBookFromGist();
+  } catch (err) {
+    console.error(err);
+    setSyncStatus(`拉取失败：${err.message}`, true);
+  }
 };
 
 window.addEventListener('beforeunload', (e) => {
