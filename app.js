@@ -234,7 +234,9 @@ function filterChapter(list, chapter) {
 
 function filterScope(list, scope) {
   if (scope === 'official') return list.filter((q) => q.answer_source === 'official');
-  if (scope === 'heuristic') return list.filter((q) => q.answer_source === 'heuristic');
+  if (scope === 'verified_web') return list.filter((q) => q.answer_source === 'verified_web');
+  if (scope === 'inferred') return list.filter((q) => q.answer_source === 'inferred');
+  if (scope === 'heuristic') return list.filter((q) => q.answer_source === 'heuristic' || q.answer_source === 'inferred');
   return list;
 }
 
@@ -261,8 +263,9 @@ function renderSetupSummary() {
   const j = scopeList.filter((q) => q.type === 'judge').length;
   const s = scopeList.filter((q) => q.type === 'single').length;
   const official = scopeList.filter((q) => q.answer_source === 'official').length;
-  const heuristic = scopeList.length - official;
-  setupSummaryEl.textContent = `当前范围可用：判断 ${j} 题，单选 ${s} 题，共 ${scopeList.length} 题。官方答案 ${official}，推断答案 ${heuristic}。`;
+  const verifiedWeb = scopeList.filter((q) => q.answer_source === 'verified_web').length;
+  const inferred = scopeList.filter((q) => q.answer_source === 'inferred' || q.answer_source === 'heuristic').length;
+  setupSummaryEl.textContent = `当前范围可用：判断 ${j} 题，单选 ${s} 题，共 ${scopeList.length} 题。官方 ${official}，互联网核验 ${verifiedWeb}，推断 ${inferred}。`;
 }
 
 function updateAnsweredCount() {
@@ -274,7 +277,12 @@ function renderQuestion() {
   if (!q) return;
 
   progressEl.textContent = `第 ${cursor + 1} / ${examList.length} 题`;
-  qMetaEl.innerHTML = `题型：${q.type === 'judge' ? '判断题' : '单选题'} | 题号：${q.id} | 答案来源：${q.answer_source === 'official' ? '官方' : '推断'} | 置信度：${q.confidence}`;
+  const sourceLabel = q.answer_source === 'official'
+    ? '官方'
+    : q.answer_source === 'verified_web'
+      ? '互联网核验'
+      : '第一性原理推断';
+  qMetaEl.innerHTML = `题型：${q.type === 'judge' ? '判断题' : '单选题'} | 题号：${q.id} | 答案来源：${sourceLabel} | 置信度：${q.confidence}`;
   questionTextEl.textContent = q.question;
 
   optionsEl.innerHTML = '';
@@ -379,8 +387,10 @@ function submitExam(isAuto = false) {
   let singleCorrect = 0;
   let officialTotal = 0;
   let officialCorrect = 0;
-  let heuristicTotal = 0;
-  let heuristicCorrect = 0;
+  let verifiedWebTotal = 0;
+  let verifiedWebCorrect = 0;
+  let inferredTotal = 0;
+  let inferredCorrect = 0;
 
   const wrong = [];
 
@@ -392,13 +402,15 @@ function submitExam(isAuto = false) {
       if (q.type === 'judge') judgeCorrect += 1;
       if (q.type === 'single') singleCorrect += 1;
       if (q.answer_source === 'official') officialCorrect += 1;
-      if (q.answer_source === 'heuristic') heuristicCorrect += 1;
+      if (q.answer_source === 'verified_web') verifiedWebCorrect += 1;
+      if (q.answer_source === 'inferred' || q.answer_source === 'heuristic') inferredCorrect += 1;
     } else {
       wrong.push({ ...q, userAnswer: user || '未作答' });
     }
 
     if (q.answer_source === 'official') officialTotal += 1;
-    else heuristicTotal += 1;
+    else if (q.answer_source === 'verified_web') verifiedWebTotal += 1;
+    else inferredTotal += 1;
   });
 
   const total = examList.length;
@@ -419,8 +431,10 @@ function submitExam(isAuto = false) {
     singleCorrect,
     officialTotal,
     officialCorrect,
-    heuristicTotal,
-    heuristicCorrect,
+    verifiedWebTotal,
+    verifiedWebCorrect,
+    inferredTotal,
+    inferredCorrect,
     wrong,
     auto: isAuto,
   };
@@ -440,7 +454,8 @@ function renderResult() {
     ['判断题正确', `${r.judgeCorrect} / ${r.judgeTotal}`],
     ['单选题正确', `${r.singleCorrect} / ${r.singleTotal}`],
     ['官方答案题正确', `${r.officialCorrect} / ${r.officialTotal}`],
-    ['推断答案题正确', `${r.heuristicCorrect} / ${r.heuristicTotal}`],
+    ['互联网核验题正确', `${r.verifiedWebCorrect} / ${r.verifiedWebTotal}`],
+    ['推断答案题正确', `${r.inferredCorrect} / ${r.inferredTotal}`],
   ];
 
   cards.forEach(([k, v]) => {
@@ -473,7 +488,9 @@ function renderWrongItems(list) {
 
     const sourceBadge = q.answer_source === 'official'
       ? '<span class="badge official">官方答案</span>'
-      : '<span class="badge heuristic">推断答案</span>';
+      : q.answer_source === 'verified_web'
+        ? '<span class="badge">互联网核验</span>'
+        : '<span class="badge heuristic">推断答案</span>';
 
     const confBadge = q.confidence === 'low'
       ? '<span class="badge low">低置信度</span>'
